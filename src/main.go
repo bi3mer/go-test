@@ -29,8 +29,7 @@ func main() {
 		test_directory_path = filepath.Join(home, test_directory_path[2:])
 	}
 
-	error_make_test_directory := os.MkdirAll(test_directory_path, os.ModePerm)
-	if error_make_test_directory != nil {
+	if os.MkdirAll(test_directory_path, os.ModePerm) != nil {
 		fmt.Print(`Error automatically creating the directory. Update the environemnt"
 variable 'gotestdir' and/or make the directory yourself.`)
 
