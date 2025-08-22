@@ -38,7 +38,12 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	}
 
 	// ===========================================================================
-	// Se
+	// Next step: parse command line input to figure out what the user wants to
+	// do, such as make a new test, list a test, delete a test, or whatever else.
+	// I'm thinking that my decision to get rid of bubbletea was ill-advised
+	// because the first thing that came to mind was a way to search all the tests
+	// but I can come back to making a cli if and when the basic functionality is
+	// done.
 	// ===========================================================================
 	fmt.Println("So far, so good!")
 }
