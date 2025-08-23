@@ -5,31 +5,92 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
+
+	"github.com/charmbracelet/bubbles/textinput"
+	tea "github.com/charmbracelet/bubbletea"
+	// "github.com/charmbracelet/lipgloss"
 )
 
-const TEST_DIRECTORY = "gotestdir"
+type Model struct {
+	project_date_prefix string
+	directory           string
+	text_input          textinput.Model
+}
+
+func NewModel() Model {
+	text_input := textinput.New()
+	text_input.Placeholder = "New project name..."
+	text_input.Focus()
+	text_input.CharLimit = 156
+	text_input.Width = 20
+	text_input.Prompt = ""
+
+	t := time.Now()
+
+	return Model{
+		fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
+		"",
+		text_input,
+	}
+}
+
+func (model Model) Init() tea.Cmd {
+	// Just return `nil`, which means "no I/O right now, please."
+	return nil
+}
+
+func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
+
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+			return m, tea.Quit
+		}
+
+	// We handle errors just like any other message
+	case error:
+		// m.err = msg
+		return m, nil
+	}
+
+	m.text_input, cmd = m.text_input.Update(msg)
+	return m, cmd
+}
+
+func (model Model) View() string {
+	s := model.directory + "\n\n"
+	s += model.project_date_prefix
+	s += model.text_input.View() + "\n"
+
+	return s
+}
 
 func main() {
+	model := NewModel()
+
 	// ===========================================================================
 	// Set up and get user test directory
 	// ===========================================================================
-	var test_directory_path = os.Getenv(TEST_DIRECTORY)
-	if test_directory_path == "" {
+	model.directory = os.Getenv(TEST_DIRECTORY)
+	if model.directory == "" {
 		fmt.Println("Test directory must be set (e.g. `export gotestdir=~/tests`).")
 		return
 	}
 
-	if strings.HasPrefix(test_directory_path, "~/") {
+	if strings.HasPrefix(model.directory, "~/") {
 		home, error_get_user_home_dir := os.UserHomeDir()
 		if error_get_user_home_dir != nil {
 			fmt.Println("Unexpected error getting user home dir: ", error_get_user_home_dir)
 			return
 		}
 
-		test_directory_path = filepath.Join(home, test_directory_path[2:])
+		model.directory = filepath.Join(home, model.directory[2:])
 	}
 
-	if os.MkdirAll(test_directory_path, os.ModePerm) != nil {
+	if os.MkdirAll(model.directory, os.ModePerm) != nil {
 		fmt.Print(`Error automatically creating the directory. Update the environemnt"
 variable 'gotestdir' and/or make the directory yourself.`)
 
@@ -37,12 +98,11 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	}
 
 	// ===========================================================================
-	// Next step: parse command line input to figure out what the user wants to
-	// do, such as make a new test, list a test, delete a test, or whatever else.
-	// I'm thinking that my decision to get rid of bubbletea was ill-advised
-	// because the first thing that came to mind was a way to search all the tests
-	// but I can come back to making a cli if and when the basic functionality is
-	// done.
+	// Start bubbletea command line application
 	// ===========================================================================
-	fmt.Println("So far, so good!")
+	p := tea.NewProgram(model)
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
+		os.Exit(1)
+	}
 }
