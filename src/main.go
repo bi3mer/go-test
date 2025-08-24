@@ -52,7 +52,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	// We handle errors just like any other message
 	case error:
-		// m.err = msg
 		return m, nil
 	}
 
@@ -81,9 +80,9 @@ func main() {
 	}
 
 	if strings.HasPrefix(model.directory, "~/") {
-		home, error_get_user_home_dir := os.UserHomeDir()
-		if error_get_user_home_dir != nil {
-			fmt.Println("Unexpected error getting user home dir: ", error_get_user_home_dir)
+		home, error := os.UserHomeDir()
+		if error != nil {
+			fmt.Println("Unexpected error getting user home dir: ", error)
 			return
 		}
 
