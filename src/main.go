@@ -13,6 +13,7 @@ import (
 )
 
 type Model struct {
+	err                 *error
 	project_date_prefix string
 	directory           string
 	text_input          textinput.Model
@@ -29,6 +30,7 @@ func NewModel() Model {
 	t := time.Now()
 
 	return Model{
+		nil,
 		fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
 		"",
 		text_input,
@@ -46,12 +48,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyEnter, tea.KeyCtrlC, tea.KeyEsc:
+		case tea.KeyEnter:
+			filepath.Join(m.directory, m.text_input.Value())
+		case tea.KeyCtrlC, tea.KeyEsc:
 			return m, tea.Quit
 		}
 
 	// We handle errors just like any other message
 	case error:
+		m.err = &msg
 		return m, nil
 	}
 
@@ -61,8 +66,12 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (model Model) View() string {
 	s := model.directory + "\n\n"
-	s += model.project_date_prefix
-	s += model.text_input.View() + "\n"
+	if model.err == nil {
+		s += model.project_date_prefix
+		s += model.text_input.View() + "\n"
+	} else {
+		s += "Error: " + (*model.err).Error()
+	}
 
 	return s
 }
@@ -80,9 +89,9 @@ func main() {
 	}
 
 	if strings.HasPrefix(model.directory, "~/") {
-		home, error := os.UserHomeDir()
-		if error != nil {
-			fmt.Println("Unexpected error getting user home dir: ", error)
+		home, err := os.UserHomeDir()
+		if err != nil {
+			fmt.Println("Unexpected error getting user home dir: ", err)
 			return
 		}
 
