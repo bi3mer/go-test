@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -107,6 +108,40 @@ func (model Model) Init() tea.Cmd {
 func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
 
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEnter:
+			if model.text_input.Focused() {
+				// do something to make the directory and then change the directory
+				// with some option for opening zed, nivm, etc. via an environment variable
+				return model, tea.Quit
+			} else if model.projects.FilterInput.Focused() {
+				i, ok := model.projects.SelectedItem().(item)
+				if ok {
+					directory := string(i)
+
+					editor := os.Getenv(TEST_EDITOR)
+					if editor == "" {
+						editor = "vim" // best default, sue me
+					}
+
+					exec.Command(editor, filepath.Join(model.directory, directory)).Run()
+
+					return model, tea.Quit
+				}
+			}
+			filepath.Join(model.directory, model.text_input.Value())
+		case tea.KeyCtrlC, tea.KeyEsc:
+			return model, tea.Quit
+		}
+
+	// We handle errors just like any other message
+	case error:
+		model.err = &msg
+		return model, nil
+	}
+
 	if model.text_input.Focused() {
 		model.text_input, cmd = model.text_input.Update(msg)
 		return model, cmd
@@ -114,22 +149,6 @@ func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		model.projects, cmd = model.projects.Update(msg)
 		return model, cmd
 	}
-
-	// keeping for later
-	// switch msg := msg.(type) {
-	// case tea.KeyMsg:
-	// 	switch msg.Type {
-	// 	case tea.KeyEnter:
-	// 		filepath.Join(model.directory, model.text_input.Value())
-	// 	case tea.KeyCtrlC, tea.KeyEsc:
-	// 		return model, tea.Quit
-	// 	}
-
-	// // We handle errors just like any other message
-	// case error:
-	// 	model.err = &msg
-	// 	return model, nil
-	// }
 
 	return model, nil
 }
