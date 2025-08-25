@@ -9,3 +9,18 @@ As of right now, I don't have any functionality, but I'm going to start with a b
 ```bash
 go run *.go && cd `cat temp`
 ```
+
+## Installing
+
+`cd` to whatever directory you want to clone the repo to.
+
+```bash
+git clone https://github.com/bi3mer/go-test.git
+cd go-test
+go build -o gotest *.go
+# echo "alias gotest="$(pwd)/gotest \&\& cd $(pwd)`cat $(pwd)/temp`"" >> ~/.bash_profile
+```
+
+You may use something other than `~/.bash_profile`, like `.zsh` etc.
+
+You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~`. (e.g., I use `export gotestdir="~/Library/CloudStorage/Dropbox/tests"`)
