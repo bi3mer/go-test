@@ -13,12 +13,12 @@ import (
 )
 
 var (
-	appStyle = lipgloss.NewStyle().Padding(1, 2)
+	appStyle = lipgloss.NewStyle().Padding(0, 0)
 
 	titleStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#FFFDF5")).
 			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
+			Padding(0, 0)
 
 	statusMessageStyle = lipgloss.NewStyle().
 				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
@@ -63,7 +63,7 @@ func NewModel(directory string) model {
 
 	projects := generateProjects(directory)
 
-	delegate := newItemDelegate(delegateKeys)
+	delegate := NewItemDelegate(delegateKeys)
 	projectsList := list.New(projects, delegate, 0, 0)
 	projectsList.Title = "Test Projects"
 	projectsList.Styles.Title = titleStyle

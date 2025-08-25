@@ -13,6 +13,12 @@ type project struct {
 	name string
 }
 
+func (i project) Title() string {
+	return i.name
+}
+
+func (i project) Description() string { return "" }
+
 func (i project) FilterValue() string {
 	return i.name
 }
