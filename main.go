@@ -145,7 +145,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyEnter:
-				newProjectDirectory := filepath.Join(m.testDirectory, m.addProject.Value())
+				projectName := m.projectDatePrefix + m.addProject.Value()
+				newProjectDirectory := filepath.Join(m.testDirectory, projectName)
 				os.Mkdir(newProjectDirectory, 0755)
 				makeTemp(newProjectDirectory)
 				return m, tea.Quit
