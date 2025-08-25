@@ -1,12 +1,14 @@
 package main
 
 import (
+	"path/filepath"
+
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
 )
 
-func NewItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
+func NewItemDelegate(keys *delegateKeyMap, testDirectory string) list.DefaultDelegate {
 	d := list.NewDefaultDelegate()
 
 	d.ShowDescription = false // ignore description
@@ -18,16 +20,14 @@ func NewItemDelegate(keys *delegateKeyMap) list.DefaultDelegate {
 
 		if i, ok := m.SelectedItem().(project); ok {
 			title = i.name
-		} else {
-			// return i.name
 		}
 
 		switch msg := msg.(type) {
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.choose):
-				// makeTemp(filepath.Join(m.directory, title))
-				return m.NewStatusMessage(statusMessageStyle("You chose " + title))
+				makeTemp(filepath.Join(testDirectory, title))
+				return tea.Quit
 
 			case key.Matches(msg, keys.remove):
 				// index := m.Index()

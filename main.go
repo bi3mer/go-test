@@ -63,7 +63,7 @@ func NewModel(directory string) model {
 
 	projects := generateProjects(directory)
 
-	delegate := NewItemDelegate(delegateKeys)
+	delegate := NewItemDelegate(delegateKeys, directory)
 	projectsList := list.New(projects, delegate, 0, 0)
 	projectsList.Title = "Test Projects"
 	projectsList.Styles.Title = titleStyle
