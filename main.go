@@ -27,8 +27,6 @@ var (
 
 type listKeyMap struct {
 	toggleSpinner    key.Binding
-	toggleTitleBar   key.Binding
-	toggleStatusBar  key.Binding
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
 	insertItem       key.Binding
@@ -39,18 +37,6 @@ func newListKeyMap() *listKeyMap {
 		insertItem: key.NewBinding(
 			key.WithKeys("a"),
 			key.WithHelp("a", "add item"),
-		),
-		toggleSpinner: key.NewBinding(
-			key.WithKeys("s"),
-			key.WithHelp("s", "toggle spinner"),
-		),
-		toggleTitleBar: key.NewBinding(
-			key.WithKeys("T"),
-			key.WithHelp("T", "toggle title"),
-		),
-		toggleStatusBar: key.NewBinding(
-			key.WithKeys("S"),
-			key.WithHelp("S", "toggle status"),
 		),
 		togglePagination: key.NewBinding(
 			key.WithKeys("P"),
@@ -70,26 +56,21 @@ type model struct {
 	delegateKeys  *delegateKeyMap
 }
 
-func newModel(directory string) model {
+func NewModel(directory string) model {
 	var (
 		delegateKeys = newDelegateKeyMap()
 		listKeys     = newListKeyMap()
 	)
 
-	// Make initial list of projects
 	projects := generateProjects(directory)
 
-	// Setup list
 	delegate := newItemDelegate(delegateKeys)
 	projectsList := list.New(projects, delegate, 0, 0)
 	projectsList.Title = "Test Projects"
 	projectsList.Styles.Title = titleStyle
 	projectsList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			listKeys.toggleSpinner,
 			listKeys.insertItem,
-			listKeys.toggleTitleBar,
-			listKeys.toggleStatusBar,
 			listKeys.togglePagination,
 			listKeys.toggleHelpMenu,
 		}
@@ -122,21 +103,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		switch {
-		case key.Matches(msg, m.keys.toggleSpinner):
-			cmd := m.list.ToggleSpinner()
-			return m, cmd
-
-		case key.Matches(msg, m.keys.toggleTitleBar):
-			v := !m.list.ShowTitle()
-			m.list.SetShowTitle(v)
-			m.list.SetShowFilter(v)
-			m.list.SetFilteringEnabled(v)
-			return m, nil
-
-		case key.Matches(msg, m.keys.toggleStatusBar):
-			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
-			return m, nil
-
 		case key.Matches(msg, m.keys.togglePagination):
 			m.list.SetShowPagination(!m.list.ShowPagination())
 			return m, nil
@@ -200,7 +166,7 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	// ===========================================================================
 	makeTemp(".")
 
-	if _, err := tea.NewProgram(newModel(directory), tea.WithAltScreen()).Run(); err != nil {
+	if _, err := tea.NewProgram(NewModel(directory), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
