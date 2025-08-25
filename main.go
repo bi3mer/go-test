@@ -1,178 +1,177 @@
 package main
 
 import (
-	"cmp"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
-	"time"
 
+	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/charmbracelet/bubbles/textinput"
-	"github.com/charmbracelet/lipgloss"
-
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
-
-const TEST_DIRECTORY = "gotestdir"
 
 var (
-	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
-	itemStyle         = lipgloss.NewStyle().PaddingLeft(4)
-	selectedItemStyle = lipgloss.NewStyle().PaddingLeft(2).Foreground(lipgloss.Color("170"))
-	paginationStyle   = list.DefaultStyles().PaginationStyle.PaddingLeft(4)
-	helpStyle         = list.DefaultStyles().HelpStyle.PaddingLeft(4).PaddingBottom(1)
-	quitTextStyle     = lipgloss.NewStyle().Margin(1, 0, 2, 4)
+	appStyle = lipgloss.NewStyle().Padding(1, 2)
+
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
+
+	statusMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
+				Render
 )
 
-type item string
+type listKeyMap struct {
+	toggleSpinner    key.Binding
+	toggleTitleBar   key.Binding
+	toggleStatusBar  key.Binding
+	togglePagination key.Binding
+	toggleHelpMenu   key.Binding
+	insertItem       key.Binding
+}
 
-func (i item) FilterValue() string { return "" }
-
-type itemDelegate struct{}
-
-func (d itemDelegate) Height() int                             { return 1 }
-func (d itemDelegate) Spacing() int                            { return 0 }
-func (d itemDelegate) Update(_ tea.Msg, _ *list.Model) tea.Cmd { return nil }
-func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list.Item) {
-	i, ok := listItem.(item)
-	if !ok {
-		return
+func newListKeyMap() *listKeyMap {
+	return &listKeyMap{
+		insertItem: key.NewBinding(
+			key.WithKeys("a"),
+			key.WithHelp("a", "add item"),
+		),
+		toggleSpinner: key.NewBinding(
+			key.WithKeys("s"),
+			key.WithHelp("s", "toggle spinner"),
+		),
+		toggleTitleBar: key.NewBinding(
+			key.WithKeys("T"),
+			key.WithHelp("T", "toggle title"),
+		),
+		toggleStatusBar: key.NewBinding(
+			key.WithKeys("S"),
+			key.WithHelp("S", "toggle status"),
+		),
+		togglePagination: key.NewBinding(
+			key.WithKeys("P"),
+			key.WithHelp("P", "toggle pagination"),
+		),
+		toggleHelpMenu: key.NewBinding(
+			key.WithKeys("H"),
+			key.WithHelp("H", "toggle help"),
+		),
 	}
+}
 
-	str := fmt.Sprintf("%d. %s", index+1, i)
+type model struct {
+	testDirectory string
+	list          list.Model
+	keys          *listKeyMap
+	delegateKeys  *delegateKeyMap
+}
 
-	fn := itemStyle.Render
-	if index == m.Index() {
-		fn = func(s ...string) string {
-			return selectedItemStyle.Render("> " + strings.Join(s, " "))
+func newModel(directory string) model {
+	var (
+		delegateKeys = newDelegateKeyMap()
+		listKeys     = newListKeyMap()
+	)
+
+	// Make initial list of projects
+	projects := generateProjects(directory)
+
+	// Setup list
+	delegate := newItemDelegate(delegateKeys)
+	projectsList := list.New(projects, delegate, 0, 0)
+	projectsList.Title = "Test Projects"
+	projectsList.Styles.Title = titleStyle
+	projectsList.AdditionalFullHelpKeys = func() []key.Binding {
+		return []key.Binding{
+			listKeys.toggleSpinner,
+			listKeys.insertItem,
+			listKeys.toggleTitleBar,
+			listKeys.toggleStatusBar,
+			listKeys.togglePagination,
+			listKeys.toggleHelpMenu,
 		}
 	}
 
-	fmt.Fprint(w, fn(str))
-}
-
-func makeTemp(directory string) {
-	err := os.WriteFile("temp", []byte(directory), 0644)
-	if err != nil {
-		fmt.Printf("Failed to change directory: %s", err)
+	return model{
+		testDirectory: directory,
+		list:          projectsList,
+		keys:          listKeys,
+		delegateKeys:  delegateKeys,
 	}
 }
 
-type Model struct {
-	err                 *error
-	project_date_prefix string
-	directory           string
-	text_input          textinput.Model
-	projects            list.Model
-}
-
-func NewModel(directory string) Model {
-	text_input := textinput.New()
-	text_input.Placeholder = "New project name..."
-	text_input.CharLimit = 156
-	text_input.Width = 20
-	text_input.Prompt = ""
-
-	project_names := []list.Item{}
-	entries, err := os.ReadDir(directory)
-	if err != nil {
-		fmt.Printf("Error reading test directory: %s", err.Error())
-		os.Exit(1)
-	}
-
-	for _, e := range entries {
-		if e.IsDir() {
-			project_names = append(project_names, item(e.Name()))
-		}
-	}
-
-	slices.SortFunc(project_names, func(a, b list.Item) int {
-		return cmp.Compare(a.FilterValue(), b.FilterValue())
-	})
-
-	project_list := list.New(project_names, itemDelegate{}, 30, len(project_names)*3)
-	project_list.FilterInput.Focus()
-
-	t := time.Now()
-
-	return Model{
-		nil,
-		fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
-		directory,
-		text_input,
-		project_list,
-	}
-}
-
-func (model Model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
+func (m model) Init() tea.Cmd {
 	return nil
 }
 
-func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	var cmd tea.Cmd
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		h, v := appStyle.GetFrameSize()
+		m.list.SetSize(msg.Width-h, msg.Height-v)
+
 	case tea.KeyMsg:
-		switch msg.Type {
-		case tea.KeyEnter:
-			if model.text_input.Focused() {
-				// do something to make the directory and then change the directory
-				// with some option for opening zed, nivm, etc. via an environment variable
-				// model.directory = filepath.Join(model.directory, directory)
-				return model, tea.Quit
-			} else if model.projects.FilterInput.Focused() {
-				i, ok := model.projects.SelectedItem().(item)
-				if ok {
-					makeTemp(filepath.Join(model.directory, string(i)))
-				}
-
-				return model, tea.Quit
-			}
-
-		case tea.KeyEscape, tea.KeyCtrlC:
-			return model, tea.Quit
+		// Don't match any of the keys below if we're actively filtering.
+		if m.list.FilterState() == list.Filtering {
+			break
 		}
 
-	// We handle errors just like any other message
-	case error:
-		model.err = &msg
-		return model, nil
+		switch {
+		case key.Matches(msg, m.keys.toggleSpinner):
+			cmd := m.list.ToggleSpinner()
+			return m, cmd
+
+		case key.Matches(msg, m.keys.toggleTitleBar):
+			v := !m.list.ShowTitle()
+			m.list.SetShowTitle(v)
+			m.list.SetShowFilter(v)
+			m.list.SetFilteringEnabled(v)
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleStatusBar):
+			m.list.SetShowStatusBar(!m.list.ShowStatusBar())
+			return m, nil
+
+		case key.Matches(msg, m.keys.togglePagination):
+			m.list.SetShowPagination(!m.list.ShowPagination())
+			return m, nil
+
+		case key.Matches(msg, m.keys.toggleHelpMenu):
+			m.list.SetShowHelp(!m.list.ShowHelp())
+			return m, nil
+
+		case key.Matches(msg, m.keys.insertItem):
+			// m.delegateKeys.remove.SetEnabled(true)
+			// newItem := m.itemGenerator.next()
+			// insCmd := m.list.InsertItem(0, newItem)
+			// statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
+			// return m, tea.Batch(insCmd, statusCmd)
+			return m, nil
+		}
 	}
 
-	if model.text_input.Focused() {
-		model.text_input, cmd = model.text_input.Update(msg)
-		return model, cmd
-	} else if model.projects.FilterInput.Focused() {
-		model.projects, cmd = model.projects.Update(msg)
-		return model, cmd
-	}
+	// This will also call our delegate's update function.
+	newListModel, cmd := m.list.Update(msg)
+	m.list = newListModel
+	cmds = append(cmds, cmd)
 
-	return model, nil
+	return m, tea.Batch(cmds...)
 }
 
-func (model Model) View() string {
-	s := model.directory + "\n\n"
-	if model.err == nil {
-		// s += model.project_date_prefix
-		// s += model.text_input.View() + "\n"
-		s += model.projects.View()
-
-	} else {
-		s += "Error: " + (*model.err).Error()
-	}
-
-	return s
+func (m model) View() string {
+	return appStyle.Render(m.list.View())
 }
 
 func main() {
 	// ===========================================================================
 	// Set up and get user test directory
 	// ===========================================================================
+	const TEST_DIRECTORY = "gotestdir"
 	directory := os.Getenv(TEST_DIRECTORY)
 	if directory == "" {
 		fmt.Println("Test directory must be set (e.g. `export gotestdir=~/tests`).")
@@ -197,14 +196,12 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	}
 
 	// ===========================================================================
-	// Start bubbletea command line application
+	// Start the app
 	// ===========================================================================
 	makeTemp(".")
-	model := NewModel(directory)
-	if _, err := tea.NewProgram(model).Run(); err != nil {
-		fmt.Printf("Error: %v", err)
+
+	if _, err := tea.NewProgram(newModel(directory), tea.WithAltScreen()).Run(); err != nil {
+		fmt.Println("Error running program:", err)
 		os.Exit(1)
 	}
-
-	fmt.Print("\033[H\033[2J") // clear the screen
 }
