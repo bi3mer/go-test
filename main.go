@@ -26,17 +26,16 @@ var (
 )
 
 type listKeyMap struct {
-	toggleSpinner    key.Binding
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
-	insertItem       key.Binding
+	makeProject      key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
 	return &listKeyMap{
-		insertItem: key.NewBinding(
-			key.WithKeys("a"),
-			key.WithHelp("a", "add item"),
+		makeProject: key.NewBinding(
+			key.WithKeys("a", "+"),
+			key.WithHelp("a/+", "make a project"),
 		),
 		togglePagination: key.NewBinding(
 			key.WithKeys("P"),
@@ -70,7 +69,7 @@ func NewModel(directory string) model {
 	projectsList.Styles.Title = titleStyle
 	projectsList.AdditionalFullHelpKeys = func() []key.Binding {
 		return []key.Binding{
-			listKeys.insertItem,
+			listKeys.makeProject,
 			listKeys.togglePagination,
 			listKeys.toggleHelpMenu,
 		}
@@ -111,13 +110,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.list.SetShowHelp(!m.list.ShowHelp())
 			return m, nil
 
-		case key.Matches(msg, m.keys.insertItem):
+		case key.Matches(msg, m.keys.makeProject):
 			// m.delegateKeys.remove.SetEnabled(true)
 			// newItem := m.itemGenerator.next()
 			// insCmd := m.list.InsertItem(0, newItem)
 			// statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
 			// return m, tea.Batch(insCmd, statusCmd)
-			return m, nil
+			return m, m.list.NewStatusMessage("Make project not implemented yet...")
 		}
 	}
 
