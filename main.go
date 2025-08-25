@@ -5,9 +5,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
+	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -49,10 +51,13 @@ func newListKeyMap() *listKeyMap {
 }
 
 type model struct {
-	testDirectory string
-	list          list.Model
-	keys          *listKeyMap
-	delegateKeys  *delegateKeyMap
+	state             AppState
+	projectDatePrefix string
+	testDirectory     string
+	addProject        textinput.Model
+	list              list.Model
+	keys              *listKeyMap
+	delegateKeys      *delegateKeyMap
 }
 
 func NewModel(directory string) model {
@@ -75,11 +80,21 @@ func NewModel(directory string) model {
 		}
 	}
 
+	textInput := textinput.New()
+	textInput.Placeholder = "New project name..."
+	textInput.CharLimit = 156
+	textInput.Width = 20
+	textInput.Prompt = ""
+
+	t := time.Now()
+
 	return model{
-		testDirectory: directory,
-		list:          projectsList,
-		keys:          listKeys,
-		delegateKeys:  delegateKeys,
+		testDirectory:     directory,
+		projectDatePrefix: fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
+		addProject:        textInput,
+		list:              projectsList,
+		keys:              listKeys,
+		delegateKeys:      delegateKeys,
 	}
 }
 
@@ -89,47 +104,79 @@ func (m model) Init() tea.Cmd {
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmds []tea.Cmd
+	switch m.state {
+	case StateList:
+		switch msg := msg.(type) {
+		case tea.WindowSizeMsg:
+			h, v := appStyle.GetFrameSize()
+			m.list.SetSize(msg.Width-h, msg.Height-v)
 
-	switch msg := msg.(type) {
-	case tea.WindowSizeMsg:
-		h, v := appStyle.GetFrameSize()
-		m.list.SetSize(msg.Width-h, msg.Height-v)
+		case tea.KeyMsg:
+			// Don't match any of the keys below if we're actively filtering.
+			if m.list.FilterState() == list.Filtering {
+				break
+			}
 
-	case tea.KeyMsg:
-		// Don't match any of the keys below if we're actively filtering.
-		if m.list.FilterState() == list.Filtering {
-			break
+			switch {
+			case key.Matches(msg, m.keys.togglePagination):
+				m.list.SetShowPagination(!m.list.ShowPagination())
+				return m, nil
+
+			case key.Matches(msg, m.keys.toggleHelpMenu):
+				m.list.SetShowHelp(!m.list.ShowHelp())
+				return m, nil
+
+			case key.Matches(msg, m.keys.makeProject):
+				m.state = StateAdd
+				// m.list.focusinput
+				m.addProject.Focus()
+				return m, nil
+			}
 		}
 
-		switch {
-		case key.Matches(msg, m.keys.togglePagination):
-			m.list.SetShowPagination(!m.list.ShowPagination())
-			return m, nil
+		newListModel, cmd := m.list.Update(msg)
+		m.list = newListModel
+		cmds = append(cmds, cmd)
 
-		case key.Matches(msg, m.keys.toggleHelpMenu):
-			m.list.SetShowHelp(!m.list.ShowHelp())
-			return m, nil
+		return m, tea.Batch(cmds...)
 
-		case key.Matches(msg, m.keys.makeProject):
-			// m.delegateKeys.remove.SetEnabled(true)
-			// newItem := m.itemGenerator.next()
-			// insCmd := m.list.InsertItem(0, newItem)
-			// statusCmd := m.list.NewStatusMessage(statusMessageStyle("Added " + newItem.Title()))
-			// return m, tea.Batch(insCmd, statusCmd)
-			return m, m.list.NewStatusMessage("Make project not implemented yet...")
+	case StateAdd:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyEnter:
+				newProjectDirectory := filepath.Join(m.testDirectory, m.addProject.Value())
+				os.Mkdir(newProjectDirectory, 0755)
+				makeTemp(newProjectDirectory)
+				return m, tea.Quit
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEscape:
+				m.state = StateList
+				return m, nil
+			}
 		}
+
+		newAddProject, cmd := m.addProject.Update(msg)
+		m.addProject = newAddProject
+		cmds = append(cmds, cmd)
+
+		return m, tea.Batch(cmds...)
 	}
 
-	// This will also call our delegate's update function.
-	newListModel, cmd := m.list.Update(msg)
-	m.list = newListModel
-	cmds = append(cmds, cmd)
-
-	return m, tea.Batch(cmds...)
+	fmt.Println("Error: entered unknown app state: %i", m.state)
+	return m, tea.Quit
 }
 
 func (m model) View() string {
-	return appStyle.Render(m.list.View())
+	switch m.state {
+	case StateList:
+		return appStyle.Render(m.list.View())
+	case StateAdd:
+		return "Create Project\n\n  " + m.projectDatePrefix + m.addProject.View()
+	}
+
+	return fmt.Sprintf("Error: entered unknown app state: %d\n", m.state)
 }
 
 func main() {
