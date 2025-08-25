@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -17,6 +16,8 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 )
+
+const TEST_DIRECTORY = "gotestdir"
 
 var (
 	titleStyle        = lipgloss.NewStyle().MarginLeft(2)
@@ -54,6 +55,13 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	fmt.Fprint(w, fn(str))
 }
 
+func makeTemp(directory string) {
+	err := os.WriteFile("temp", []byte(directory), 0644)
+	if err != nil {
+		fmt.Printf("Failed to change directory: %s", err)
+	}
+}
+
 type Model struct {
 	err                 *error
 	project_date_prefix string
@@ -86,7 +94,7 @@ func NewModel(directory string) Model {
 		return cmp.Compare(a.FilterValue(), b.FilterValue())
 	})
 
-	project_list := list.New(project_names, itemDelegate{}, 5, len(project_names)*3)
+	project_list := list.New(project_names, itemDelegate{}, 30, len(project_names)*3)
 	project_list.FilterInput.Focus()
 
 	t := time.Now()
@@ -115,24 +123,18 @@ func (model Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if model.text_input.Focused() {
 				// do something to make the directory and then change the directory
 				// with some option for opening zed, nivm, etc. via an environment variable
+				// model.directory = filepath.Join(model.directory, directory)
 				return model, tea.Quit
 			} else if model.projects.FilterInput.Focused() {
 				i, ok := model.projects.SelectedItem().(item)
 				if ok {
-					directory := string(i)
-
-					editor := os.Getenv(TEST_EDITOR)
-					if editor == "" {
-						editor = "vim" // best default, sue me
-					}
-
-					exec.Command(editor, filepath.Join(model.directory, directory)).Run()
-
-					return model, tea.Quit
+					makeTemp(filepath.Join(model.directory, string(i)))
 				}
+
+				return model, tea.Quit
 			}
-			filepath.Join(model.directory, model.text_input.Value())
-		case tea.KeyCtrlC, tea.KeyEsc:
+
+		case tea.KeyEscape, tea.KeyCtrlC:
 			return model, tea.Quit
 		}
 
@@ -197,9 +199,12 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	// ===========================================================================
 	// Start bubbletea command line application
 	// ===========================================================================
+	makeTemp(".")
 	model := NewModel(directory)
 	if _, err := tea.NewProgram(model).Run(); err != nil {
-		fmt.Printf("Alas, there's been an error: %v", err)
+		fmt.Printf("Error: %v", err)
 		os.Exit(1)
 	}
+
+	fmt.Print("\033[H\033[2J") // clear the screen
 }

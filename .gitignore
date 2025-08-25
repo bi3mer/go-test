@@ -30,3 +30,7 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+
+# temp file made for where the process should cd to after go-test finishes running if  the
+# user has selected a proejct to switch to or they have made a new project
+temp 

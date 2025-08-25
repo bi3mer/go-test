@@ -3,3 +3,9 @@
 This is inspired by [try](https://github.com/tobi/try/tree/main), a repo I came across and I thought to myself that I would like to use something like that. However, I am also in the process of learning [Go](https://go.dev/), and I was looking for a cool project to work on, and it seemed like a fun project to make myself. So, that's what this repo is, an alternative version of [try](https://github.com/tobi/try/tree/main), written in [Go](https://go.dev/).
 
 As of right now, I don't have any functionality, but I'm going to start with a basic commandline tool and I'll update to a full [TUI](https://en.wikipedia.org/wiki/Text-based_user_interface) towards the end of this project.
+
+## Running
+
+```bash
+go run *.go && cd `cat temp`
+```
