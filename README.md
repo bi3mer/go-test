@@ -1,5 +1,7 @@
 # go-test
 
+![alt text](media/example_usage.gif)
+
 This is inspired by [try](https://github.com/tobi/try/tree/main), a repo I came across and I thought to myself that I would like to use something like that. However, I am also in the process of learning [Go](https://go.dev/), and I was looking for a cool project to work on, and it seemed like a fun project to make myself. So, that's what this repo is, an alternative version of [try](https://github.com/tobi/try/tree/main), written in [Go](https://go.dev/).
 
 ## Running
@@ -16,7 +18,7 @@ go run *.go && cd `cat ~/.gotest`
 git clone https://github.com/bi3mer/go-test.git
 cd go-test
 go build -o gotest *.go
-echo "alias gotest=\"$(pwd)/gotest && cd \`cat ~/.gotest\`\"" >> ~/.bash_profile
+echo "alias gotest='/Users/colan/projects/go-test/gotest && eval \"\$(cat ~/.gotest)\"; rm ~/.gotest'" >> ~/.bash_profile
 ```
 
 You may use something other than `~/.bash_profile`, like `~/.zsh` etc.

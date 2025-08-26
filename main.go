@@ -148,7 +148,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				projectName := m.projectDatePrefix + m.addProject.Value()
 				newProjectDirectory := filepath.Join(m.testDirectory, projectName)
 				os.Mkdir(newProjectDirectory, 0755)
-				makeTemp(newProjectDirectory)
+				makeTemp("cd " + newProjectDirectory)
 				return m, tea.Quit
 			case tea.KeyCtrlC:
 				return m, tea.Quit
@@ -211,7 +211,7 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	// ===========================================================================
 	// Start the app
 	// ===========================================================================
-	makeTemp(".")
+	makeTemp("")
 
 	if _, err := tea.NewProgram(NewModel(directory), tea.WithAltScreen()).Run(); err != nil {
 		fmt.Println("Error running program:", err)
