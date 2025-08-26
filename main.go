@@ -187,7 +187,7 @@ func main() {
 	const TEST_DIRECTORY = "gotestdir"
 	directory := os.Getenv(TEST_DIRECTORY)
 	if directory == "" {
-		fmt.Println("Test directory must be set (e.g. `export gotestdir=~/tests`).")
+		fmt.Println("Test directory must be set (e.g. `export gotestdir=\"~/tests\"`).")
 		return
 	}
 
