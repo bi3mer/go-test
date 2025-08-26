@@ -39,6 +39,8 @@ func generateProjects(directory string) []list.Item {
 	}
 
 	slices.SortFunc(projects, func(a, b list.Item) int {
+		// @TODO: change to be based on last access date:
+		// https://stackoverflow.com/questions/8294134/how-to-get-last-accessed-date-and-time-of-file-in-go
 		return -strings.Compare(a.FilterValue(), b.FilterValue())
 	})
 
