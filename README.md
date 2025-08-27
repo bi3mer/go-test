@@ -21,6 +21,6 @@ go build -o gotest *.go
 echo "alias gotest='/Users/colan/projects/go-test/gotest && eval \"\$(cat ~/.gotest)\"; rm ~/.gotest'" >> ~/.bash_profile
 ```
 
-You may use something other than `~/.bash_profile`, like `~/.zsh` etc.
+You may use something other than `~/.bash_profile`, like `~/.zshrc` etc.
 
 You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~`. (e.g., I use `export gotestdir="~/Library/CloudStorage/Dropbox/tests"`)
