@@ -41,6 +41,8 @@ func generateProjects(directory string) []project {
 		}
 	}
 
+	// TODO: if a project is not in the directory, then it should not be listed
+
 	// read the directory to see if the user has made any projects without the cli and
 	// add them to the list for future use
 	entries, err := os.ReadDir(directory)

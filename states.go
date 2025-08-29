@@ -4,7 +4,7 @@ type AppState int
 
 const (
 	StateList = iota
-	StateAdd
-	StateRename
-	StateFilter
+	StateAddProject
+	StateRenameProject
+	StateFilterList
 )

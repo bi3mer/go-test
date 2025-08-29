@@ -35,7 +35,7 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "ctrl+c", "q":
-			return m, endSession(m)
+			return m, cmdEndSession(m)
 
 		case "up", "k":
 			if m.cursor > 0 {
@@ -49,10 +49,11 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "r", "R":
 			m.temp = strings.Clone(m.projects[m.cursor].name)
-			m.state = StateRename
+			m.state = StateRenameProject
 
 		case "a", "A":
-			panic("Add project not implemented!")
+			m.state = StateAddProject
+			m.temp = ""
 
 		case "/", "f", "F":
 			panic("Filter not yet implemented!")
@@ -63,7 +64,7 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			sortProjects(m.projects)
 			m.cursor = 0
 
-			return m, endSession(m)
+			return m, cmdEndSession(m)
 		}
 
 	case endMessage:
@@ -73,7 +74,7 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-func (m model) UpdateRenameState(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m model) UpdateRenameProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
@@ -114,14 +115,50 @@ func (m model) UpdateRenameState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, tea.Quit
+		case tea.KeyEscape:
+			m.state = StateList
+		case tea.KeyEnter:
+			err := os.Mkdir(filepath.Join(m.directory, m.temp), 0755)
+			if err == nil {
+				m.projects = append(m.projects, project{
+					name:    m.temp,
+					time:    time.Now(),
+					visible: true,
+				})
+
+				sortProjects(m.projects)
+			}
+
+			m.state = StateList
+		case tea.KeyBackspace:
+			length := len(m.temp)
+			if length > 0 {
+				m.temp = m.temp[:length-1]
+			}
+		case tea.KeyRunes:
+			m.temp += string(msg.Runes)
+		}
+	}
+
+	return m, nil
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch m.state {
 	case StateList:
 		return m.UpdateListState(msg)
-	case StateAdd:
+	case StateAddProject:
+		return m.UpdateAddProjectState(msg)
+	case StateRenameProject:
+		return m.UpdateRenameProjectState(msg)
+	case StateFilterList:
 		return m, nil
-	case StateRename:
-		return m.UpdateRenameState(msg)
 	}
 
 	return m, tea.Quit
@@ -132,6 +169,11 @@ func (m model) View() string {
 	s := titleStyle.Render(" Test Projects ")
 	s += "\n\n"
 
+	if m.state == StateAddProject {
+		s += selectedStyle.Render("Add Project: ") + renameStyle.Render(m.temp)
+		s += "\n\n"
+	}
+
 	for i, p := range m.projects {
 		if !p.visible {
 			continue
@@ -141,9 +183,9 @@ func (m model) View() string {
 			switch m.state {
 			case StateList:
 				s += selectedStyle.Render("> "+p.name) + "\n"
-			case StateRename:
+			case StateRenameProject:
 				s += selectedStyle.Render("> ") + renameStyle.Render(p.name) + "\n"
-			case StateAdd:
+			case StateAddProject:
 				s += defaultStyle.Render("> "+p.name) + "\n"
 
 			}
