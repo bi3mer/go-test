@@ -5,14 +5,16 @@ import (
 )
 
 type model struct {
-	projects []project
-	cursor   int
+	directory string
+	projects  []project
+	cursor    int
 }
 
 func NewModel(directory string) model {
 	return model{
-		projects: generateProjects(directory),
-		cursor:   0,
+		directory: directory,
+		projects:  generateProjects(directory),
+		cursor:    0,
 	}
 }
 
@@ -41,17 +43,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "enter", " ":
-			// _, ok := m.selected[m.cursor]
-			// if ok {
-			// 	delete(m.selected, m.cursor)
-			// } else {
-			// 	m.selected[m.cursor] = struct{}{}
-			// }
+			makeTemp(m.directory, m.projects[m.cursor].name)
+			return m, tea.Quit
 		}
 	}
 
-	// Return the updated model to the Bubble Tea runtime for processing.
-	// Note that we're not returning a command.
 	return m, nil
 }
 

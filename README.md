@@ -24,8 +24,8 @@ go run *.go && cd `cat ~/.gotest`
 ```bash
 git clone https://github.com/bi3mer/go-test.git
 cd go-test
-go build -o gotest *.go
-echo "alias gotest='$(pwd)/gotest && cd \"\$(cat \$gotestdir/.gotest)\"'" >> ~/.bash_profile
+go build -o go-test *.go
+echo "alias gotest='$(pwd)/go-test && cd \"\$(cat \$gotestdir/.gotest)\"'" >> ~/.bash_profile
 ```
 
 You may use something other than `~/.bash_profile`, like `~/.zshrc` etc.
