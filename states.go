@@ -5,4 +5,5 @@ type AppState int
 const (
 	StateList = iota
 	StateAdd
+	StateRename
 )

@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/list"
@@ -31,6 +30,7 @@ type listKeyMap struct {
 	togglePagination key.Binding
 	toggleHelpMenu   key.Binding
 	makeProject      key.Binding
+	renameProject    key.Binding
 }
 
 func newListKeyMap() *listKeyMap {
@@ -47,17 +47,20 @@ func newListKeyMap() *listKeyMap {
 			key.WithKeys("H"),
 			key.WithHelp("H", "toggle help"),
 		),
+		renameProject: key.NewBinding(
+			key.WithKeys("r"),
+			key.WithHelp("r", "rename a project"),
+		),
 	}
 }
 
 type model struct {
-	state             AppState
-	projectDatePrefix string
-	testDirectory     string
-	addProject        textinput.Model
-	list              list.Model
-	keys              *listKeyMap
-	delegateKeys      *delegateKeyMap
+	state         AppState
+	testDirectory string
+	textInput     textinput.Model
+	list          list.Model
+	keys          *listKeyMap
+	delegateKeys  *delegateKeyMap
 }
 
 func NewModel(directory string) model {
@@ -77,24 +80,24 @@ func NewModel(directory string) model {
 			listKeys.makeProject,
 			listKeys.togglePagination,
 			listKeys.toggleHelpMenu,
+			listKeys.renameProject,
 		}
 	}
 
 	textInput := textinput.New()
 	textInput.Placeholder = "New project name..."
 	textInput.CharLimit = 156
-	textInput.Width = 20
+	textInput.Width = 60
 	textInput.Prompt = ""
 
-	t := time.Now()
+	// projectDatePrefix: fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
 
 	return model{
-		testDirectory:     directory,
-		projectDatePrefix: fmt.Sprintf("%d-%d-%d-", t.Year(), t.Month(), t.Day()),
-		addProject:        textInput,
-		list:              projectsList,
-		keys:              listKeys,
-		delegateKeys:      delegateKeys,
+		testDirectory: directory,
+		textInput:     textInput,
+		list:          projectsList,
+		keys:          listKeys,
+		delegateKeys:  delegateKeys,
 	}
 }
 
@@ -128,8 +131,16 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			case key.Matches(msg, m.keys.makeProject):
 				m.state = StateAdd
-				// m.list.focusinput
-				m.addProject.Focus()
+				m.textInput.Placeholder = "New project name..."
+				m.textInput.Focus()
+				return m, nil
+
+			case key.Matches(msg, m.keys.renameProject):
+				m.textInput.Placeholder = "Rename project..."
+				m.state = StateRename
+				m.textInput.SetValue(m.list.SelectedItem().FilterValue())
+				m.textInput.Focus()
+
 				return m, nil
 			}
 		}
@@ -145,8 +156,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyMsg:
 			switch msg.Type {
 			case tea.KeyEnter:
-				projectName := m.projectDatePrefix + m.addProject.Value()
-				newProjectDirectory := filepath.Join(m.testDirectory, projectName)
+				newProjectDirectory := filepath.Join(m.testDirectory, m.textInput.Value())
 				os.Mkdir(newProjectDirectory, 0755)
 				makeTemp("cd " + newProjectDirectory)
 				return m, tea.Quit
@@ -158,8 +168,48 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		newAddProject, cmd := m.addProject.Update(msg)
-		m.addProject = newAddProject
+		newAddProject, cmd := m.textInput.Update(msg)
+		m.textInput = newAddProject
+		cmds = append(cmds, cmd)
+
+		return m, tea.Batch(cmds...)
+
+	case StateRename:
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			switch msg.Type {
+			case tea.KeyEnter:
+				userInput := strings.TrimSpace(m.textInput.Value())
+				if len(userInput) == 0 {
+					return m, tea.Batch(cmds...) // TODO: use status message?
+				}
+
+				oldName := filepath.Join(m.testDirectory, m.list.SelectedItem().FilterValue())
+				newName := filepath.Join(m.testDirectory, userInput)
+				os.Rename(oldName, newName)
+
+				stats, err := os.Stat(newName)
+				if err == nil {
+					newItem := project{userInput, ""}
+					m.list.Items()[m.list.Index()] = newItem
+				} else {
+					newItem := project{m.textInput.Value(), stats.ModTime().GoString()}
+					m.list.Items()[m.list.Index()] = newItem
+				}
+
+				m.state = StateList
+
+				return m, tea.Batch(cmds...)
+			case tea.KeyCtrlC:
+				return m, tea.Quit
+			case tea.KeyEscape:
+				m.state = StateList
+				return m, tea.Batch(cmds...)
+			}
+		}
+
+		newAddProject, cmd := m.textInput.Update(msg)
+		m.textInput = newAddProject
 		cmds = append(cmds, cmd)
 
 		return m, tea.Batch(cmds...)
@@ -174,7 +224,9 @@ func (m model) View() string {
 	case StateList:
 		return appStyle.Render(m.list.View())
 	case StateAdd:
-		return "Create Project\n\n  " + m.projectDatePrefix + m.addProject.View()
+		return "Create Project\n\n  " + m.textInput.View()
+	case StateRename:
+		return "Rename Project\n\n  " + m.textInput.View()
 	}
 
 	return fmt.Sprintf("Error: entered unknown app state: %d\n", m.state)

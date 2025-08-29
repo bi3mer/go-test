@@ -4,13 +4,14 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 )
 
 type project struct {
-	name string
+	name   string
+	prefix string
 }
 
 func (i project) Title() string {
@@ -32,16 +33,21 @@ func generateProjects(directory string) []list.Item {
 		os.Exit(1)
 	}
 
+	modificationDate := make(map[string]time.Time)
+
 	for _, e := range entries {
 		if e.IsDir() {
-			projects = append(projects, project{e.Name()})
+			if stats, err := os.Stat(directory); err != nil {
+				fmt.Fprintf(os.Stderr, "Error getting directory stats %s: %v", directory, err)
+			} else {
+				modificationDate[e.Name()] = stats.ModTime()
+				projects = append(projects, project{e.Name(), stats.ModTime().GoString()})
+			}
 		}
 	}
 
 	slices.SortFunc(projects, func(a, b list.Item) int {
-		// @TODO: change to be based on last access date:
-		// https://stackoverflow.com/questions/8294134/how-to-get-last-accessed-date-and-time-of-file-in-go
-		return -strings.Compare(a.FilterValue(), b.FilterValue())
+		return -modificationDate[a.FilterValue()].Compare(modificationDate[b.FilterValue()])
 	})
 
 	return projects
