@@ -25,12 +25,12 @@ go run *.go && cd `cat ~/.gotest`
 git clone https://github.com/bi3mer/go-test.git
 cd go-test
 go build -o gotest *.go
-echo "alias gotest='$(pwd)/gotest && eval \"\$(cat ~/.gotest)\"; rm ~/.gotest'" >> ~/.bash_profile
+echo "alias gotest='$(pwd)/gotest && cd \"\$(cat \$gotestdir/.gotest)\"'" >> ~/.bash_profile
 ```
 
 You may use something other than `~/.bash_profile`, like `~/.zshrc` etc.
 
-You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~` (e.g., I use `export gotestdir="~/Library/CloudStorage/Dropbox/tests"`).
+You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~` (e.g., I use `export gotestdir="$HOME/Library/CloudStorage/Dropbox/tests"`, note that I use `$HOME` because `~` won't be expanded in the alias command above).
 
 ## Uninstalling
 

@@ -26,7 +26,7 @@ func NewItemDelegate(keys *delegateKeyMap, testDirectory string) list.DefaultDel
 		case tea.KeyMsg:
 			switch {
 			case key.Matches(msg, keys.choose):
-				makeTemp("cd " + filepath.Join(testDirectory, title))
+				makeTemp(testDirectory, filepath.Join(testDirectory, title))
 				return tea.Quit
 			}
 		}
