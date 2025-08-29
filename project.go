@@ -64,10 +64,7 @@ func generateProjects(directory string) []project {
 		}
 	}
 
-	slices.SortFunc(projects, func(a, b project) int {
-		return -a.time.Compare(b.time)
-	})
-
+	sortProjects(projects)
 	return projects
 }
 
@@ -81,4 +78,10 @@ func saveProjects(projects []project, directory string) {
 	for _, p := range projects {
 		file.WriteString(fmt.Sprintf("%s,%s\n", p.name, p.time.Format(time.StampNano))) // skip error
 	}
+}
+
+func sortProjects(projects []project) {
+	slices.SortFunc(projects, func(a, b project) int {
+		return -a.time.Compare(b.time)
+	})
 }
