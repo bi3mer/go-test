@@ -6,4 +6,5 @@ const (
 	StateList = iota
 	StateAdd
 	StateRename
+	StateFilter
 )

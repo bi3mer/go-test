@@ -54,6 +54,9 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "a", "A":
 			panic("Add project not implemented!")
 
+		case "/", "f", "F":
+			panic("Filter not yet implemented!")
+
 		case "enter", " ":
 			makeTemp(m.directory, m.projects[m.cursor].name)
 			m.projects[m.cursor].time = time.Now()
@@ -130,6 +133,10 @@ func (m model) View() string {
 	s += "\n\n"
 
 	for i, p := range m.projects {
+		if !p.visible {
+			continue
+		}
+
 		if m.cursor == i {
 			switch m.state {
 			case StateList:
@@ -146,6 +153,6 @@ func (m model) View() string {
 	}
 
 	// header
-	s += "\nq quit, a add project, r rename project\n"
+	s += "\nq quit, a add project, r rename project, / to filter\n"
 	return s
 }

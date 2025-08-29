@@ -11,8 +11,9 @@ import (
 )
 
 type project struct {
-	name string
-	time time.Time
+	name    string
+	time    time.Time
+	visible bool
 }
 
 func generateProjects(directory string) []project {
@@ -31,8 +32,9 @@ func generateProjects(directory string) []project {
 				projectTime, timeErr := time.Parse(time.StampNano, lineData[1])
 				if timeErr == nil {
 					projects = append(projects, project{
-						name: lineData[0],
-						time: projectTime,
+						name:    lineData[0],
+						time:    projectTime,
+						visible: true,
 					})
 				}
 			}
@@ -59,7 +61,11 @@ func generateProjects(directory string) []project {
 			}
 
 			if !found {
-				projects = append(projects, project{projectName, time.Now()})
+				projects = append(projects, project{
+					name:    projectName,
+					time:    time.Now(),
+					visible: true,
+				})
 			}
 		}
 	}
