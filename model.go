@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	tea "github.com/charmbracelet/bubbletea"
 )
 
@@ -43,6 +45,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter", " ":
 			makeTemp(m.directory, m.projects[m.cursor].name)
+			m.projects[m.cursor].time = time.Now()
 			return m, endSession(m)
 		}
 
