@@ -19,7 +19,7 @@ type project struct {
 func generateProjects(directory string) []project {
 	projects := []project{}
 
-	// read .gotestdb to find projects we have already made
+	// read .gotestdb to find projects already made
 	dbPath := filepath.Join(directory, ".gotestdb")
 	if stat, statErr := os.Stat(dbPath); statErr == nil && !stat.IsDir() {
 		dbFile, err := os.Open(dbPath)
@@ -34,14 +34,12 @@ func generateProjects(directory string) []project {
 					projects = append(projects, project{
 						name:    lineData[0],
 						time:    projectTime,
-						visible: true,
+						visible: false,
 					})
 				}
 			}
 		}
 	}
-
-	// TODO: if a project is not in the directory, then it should not be listed
 
 	// read the directory to see if the user has made any projects without the cli and
 	// add them to the list for future use
@@ -55,8 +53,10 @@ func generateProjects(directory string) []project {
 		projectName := e.Name()
 		if e.IsDir() {
 			found := false
-			for _, p := range projects {
+			for i := 0; i < len(projects); i++ {
+				p := &projects[i]
 				if p.name == projectName {
+					p.visible = true
 					found = true
 					break
 				}
@@ -72,8 +72,18 @@ func generateProjects(directory string) []project {
 		}
 	}
 
-	sortProjects(projects)
-	return projects
+	// remove any project where visible is false, because this means that there is no
+	// corresponding directory in the users test directory
+	filtered := projects[:0]
+	for _, p := range projects {
+		if p.visible {
+			filtered = append(filtered, p)
+			fmt.Printf("%s\n", p.name)
+		}
+	}
+
+	sortProjects(filtered)
+	return filtered
 }
 
 func saveProjects(projects []project, directory string) {
