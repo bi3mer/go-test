@@ -11,6 +11,8 @@ This is inspired by [try](https://github.com/tobi/try/tree/main), a repo I came 
 
 ## Running
 
+After cloning the repo and cd'ing into it, run the following from your terminal of choice:
+
 ```bash
 go run *.go && cd `cat ~/.gotest`
 ```
@@ -40,3 +42,10 @@ rm ~/.gotest
 ```
 
 `~/.gotest` shoudln't exist, but just in case.
+
+## License
+
+tl;dr, MIT
+
+All the code I've written is under the MIT license. However, this is written in Go, which is under BSD-3. I also have a dependency on [Bubble Tea](https://github.com/charmbracelet/bubbletea) for the TUI, which is under the MIT license. Further, not all the code in this repository is code that I have written. Specifically, I took code from [Bubbles](https://github.com/charmbracelet/bubbles)---under the MIT license---and modified it to fit my requirements.
+
