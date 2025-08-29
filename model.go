@@ -158,7 +158,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StateRenameProject:
 		return m.UpdateRenameProjectState(msg)
 	case StateFilterList:
-		return m, nil
+		return m, tea.Quit
 	}
 
 	return m, tea.Quit
@@ -174,6 +174,7 @@ func (m model) View() string {
 		s += "\n\n"
 	}
 
+	// TODO: add paging so only so list of projects does not extend past the terminal view
 	for i, p := range m.projects {
 		if !p.visible {
 			continue

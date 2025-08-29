@@ -78,7 +78,6 @@ func generateProjects(directory string) []project {
 	for _, p := range projects {
 		if p.visible {
 			filtered = append(filtered, p)
-			fmt.Printf("%s\n", p.name)
 		}
 	}
 

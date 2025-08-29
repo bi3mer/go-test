@@ -41,7 +41,7 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	// Start the app
 	// ===========================================================================
 	makeTemp(directory, ".")
-	p := tea.NewProgram(NewModel(directory))
+	p := tea.NewProgram(NewModel(directory), tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
 		fmt.Printf("Alas, there's been an error: %v", err)
