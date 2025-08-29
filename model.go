@@ -19,7 +19,6 @@ func NewModel(directory string) model {
 }
 
 func (m model) Init() tea.Cmd {
-	// Just return `nil`, which means "no I/O right now, please."
 	return nil
 }
 
@@ -30,7 +29,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.String() {
 		case "ctrl+c", "q":
-			return m, tea.Quit
+			return m, endSession(m)
 
 		case "up", "k":
 			if m.cursor > 0 {
@@ -44,8 +43,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		case "enter", " ":
 			makeTemp(m.directory, m.projects[m.cursor].name)
-			return m, tea.Quit
+			return m, endSession(m)
 		}
+
+	case endMessage:
+		return m, tea.Quit
 	}
 
 	return m, nil
