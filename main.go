@@ -7,20 +7,6 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
-)
-
-var (
-	appStyle = lipgloss.NewStyle().Padding(0, 0)
-
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 0)
-
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
 )
 
 func main() {
@@ -54,9 +40,9 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	// ===========================================================================
 	// Start the app
 	// ===========================================================================
-	makeTemp(directory, "")
-	if _, err := tea.NewProgram(NewModel(directory), tea.WithAltScreen()).Run(); err != nil {
-		fmt.Println("Error running program:", err)
+	p := tea.NewProgram(NewModel(directory))
+	if _, err := p.Run(); err != nil {
+		fmt.Printf("Alas, there's been an error: %v", err)
 		os.Exit(1)
 	}
 }
