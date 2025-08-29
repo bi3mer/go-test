@@ -25,23 +25,16 @@ go run *.go && cd `cat ~/.gotest`
 git clone https://github.com/bi3mer/go-test.git
 cd go-test
 go build -o gotest *.go
-echo "alias gotest='/Users/colan/projects/go-test/gotest && eval \"\$(cat ~/.gotest)\"; rm ~/.gotest'" >> ~/.bash_profile
+echo "alias gotest='$(pwd)gotest && eval \"\$(cat ~/.gotest)\"; rm ~/.gotest'" >> ~/.bash_profile
 ```
 
 You may use something other than `~/.bash_profile`, like `~/.zshrc` etc.
 
-You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~`. (e.g., I use `export gotestdir="~/Library/CloudStorage/Dropbox/tests"`)
+You should also set the environment variable `gotestdir` to wherever you want your test directory to be. You should use an absolute path or a relative one starting with `~` (e.g., I use `export gotestdir="~/Library/CloudStorage/Dropbox/tests"`).
 
 ## Uninstalling
 
-First, go to `~/bash_profile`, `~/.zshrc`, or wherever you modified to add the alias `gotest`. Remove that line from the file. Then, run the following:
-
-```bash
-rm ~/.gotestdb
-rm ~/.gotest
-```
-
-`~/.gotest` shoudln't exist, but just in case.
+First, go to `~/bash_profile`, `~/.zshrc`, or wherever you modified to remove `gotest` and `gotestdir`. Also, there will be two files in your configured test directory `.gotest` and `.gotestdb`.
 
 ## License
 
