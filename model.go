@@ -58,6 +58,14 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.projectIndex > 0 {
 				m.projectIndex--
 
+				for m.projects[m.projectIndex].visible == false && m.projectIndex > 0 {
+					m.projectIndex--
+				}
+
+				for m.projects[m.projectIndex].visible == false && m.projectIndex < len(m.projects)-1 {
+					m.projectIndex++
+				}
+
 				if m.minIndex > m.projectIndex {
 					m.minIndex--
 				}
@@ -66,6 +74,14 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "down", "j":
 			if m.projectIndex < len(m.projects)-1 {
 				m.projectIndex++
+
+				for m.projects[m.projectIndex].visible == false && m.projectIndex < len(m.projects)-1 {
+					m.projectIndex++
+				}
+
+				for m.projects[m.projectIndex].visible == false && m.projectIndex > 0 {
+					m.projectIndex--
+				}
 
 				if m.minIndex+m.height-m.projectOffset-1 < m.projectIndex {
 					m.minIndex++
@@ -267,9 +283,10 @@ func (m model) View() string {
 	}
 
 	loopMax := min(m.minIndex+m.height-m.projectOffset, len(m.projects))
-	for i := m.minIndex; i < loopMax; i++ {
+	for i := m.minIndex; i < loopMax && i < len(m.projects); i++ {
 		p := &m.projects[i]
 		if !p.visible {
+			loopMax++
 			continue
 		}
 
