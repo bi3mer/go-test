@@ -10,28 +10,39 @@ import (
 )
 
 type model struct {
-	width     int
-	height    int
-	cursor    int
-	state     AppState
-	directory string
-	temp      string
-	projects  []project
+	width         int
+	height        int
+	minIndex      int
+	projectIndex  int
+	projectOffset int
+	state         AppState
+	directory     string
+	temp          string
+	projects      []project
 }
 
 func NewModel(directory string) model {
 	return model{
-		width:     0,
-		height:    0,
-		cursor:    0,
-		state:     StateList,
-		directory: directory,
-		projects:  generateProjects(directory),
+		projectOffset: 4,
+		state:         StateList,
+		directory:     directory,
+		projects:      generateProjects(directory),
 	}
 }
 
 func (m model) Init() tea.Cmd {
 	return nil
+}
+
+func (m *model) ChangeState(state AppState) {
+	m.state = state
+
+	switch m.state {
+	case StateAddProject:
+		m.projectOffset = 6
+	default:
+		m.projectOffset = 4
+	}
 }
 
 func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -42,37 +53,42 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, cmdEndSession(m)
 
 		case "up", "k":
-			if m.cursor > 0 {
-				m.cursor--
+			if m.projectIndex > 0 {
+				m.projectIndex--
+
+				if m.minIndex > m.projectIndex {
+					m.minIndex--
+				}
 			}
 
 		case "down", "j":
-			if m.cursor < len(m.projects)-1 {
-				m.cursor++
+			if m.projectIndex < len(m.projects)-1 {
+				m.projectIndex++
+
+				if m.minIndex+m.height-m.projectOffset-1 < m.projectIndex {
+					m.minIndex++
+				}
 			}
 
 		case "r", "R":
-			m.temp = strings.Clone(m.projects[m.cursor].name)
-			m.state = StateRenameProject
+			m.temp = strings.Clone(m.projects[m.projectIndex].name)
+			m.ChangeState(StateRenameProject)
 
 		case "a", "A":
-			m.state = StateAddProject
+			m.ChangeState(StateAddProject)
 			m.temp = ""
 
 		case "/", "f", "F":
 			panic("Filter not yet implemented!")
 
 		case "enter", " ":
-			makeTemp(m.directory, m.projects[m.cursor].name)
-			m.projects[m.cursor].time = time.Now()
+			makeTemp(m.directory, m.projects[m.projectIndex].name)
+			m.projects[m.projectIndex].time = time.Now()
 			sortProjects(m.projects)
-			m.cursor = 0
+			m.projectIndex = 0
 
 			return m, cmdEndSession(m)
 		}
-
-	case endMessage:
-		return m, tea.Quit
 	}
 
 	return m, nil
@@ -83,36 +99,36 @@ func (m model) UpdateRenameProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return m, tea.Quit
+			return m, cmdEndSession(m)
 		case tea.KeyEscape:
-			m.projects[m.cursor].name = m.temp
-			m.state = StateList
+			m.projects[m.projectIndex].name = m.temp
+			m.ChangeState(StateList)
 		case tea.KeyEnter:
-			if len(m.projects[m.cursor].name) == 0 {
-				m.projects[m.cursor].name = m.temp
+			if len(m.projects[m.projectIndex].name) == 0 {
+				m.projects[m.projectIndex].name = m.temp
 			} else {
 				err := os.Rename(
 					filepath.Join(m.directory, m.temp),
-					filepath.Join(m.directory, m.projects[m.cursor].name),
+					filepath.Join(m.directory, m.projects[m.projectIndex].name),
 				)
 
 				if err != nil {
-					m.projects[m.cursor].name = m.temp
+					m.projects[m.projectIndex].name = m.temp
 				} else {
-					m.projects[m.cursor].time = time.Now()
+					m.projects[m.projectIndex].time = time.Now()
 					sortProjects(m.projects)
-					m.cursor = 0
+					m.projectIndex = 0
 				}
 			}
 
-			m.state = StateList
+			m.ChangeState(StateList)
 		case tea.KeyBackspace:
-			length := len(m.projects[m.cursor].name)
+			length := len(m.projects[m.projectIndex].name)
 			if length > 0 {
-				m.projects[m.cursor].name = m.projects[m.cursor].name[:length-1]
+				m.projects[m.projectIndex].name = m.projects[m.projectIndex].name[:length-1]
 			}
 		case tea.KeyRunes:
-			m.projects[m.cursor].name += string(msg.Runes)
+			m.projects[m.projectIndex].name += string(msg.Runes)
 		}
 	}
 
@@ -124,9 +140,9 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyCtrlC:
-			return m, tea.Quit
+			return m, cmdEndSession(m)
 		case tea.KeyEscape:
-			m.state = StateList
+			m.ChangeState(StateList)
 		case tea.KeyEnter:
 			err := os.Mkdir(filepath.Join(m.directory, m.temp), 0755)
 			if err == nil {
@@ -139,7 +155,7 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 				sortProjects(m.projects)
 			}
 
-			m.state = StateList
+			m.ChangeState(StateList)
 		case tea.KeyBackspace:
 			length := len(m.temp)
 			if length > 0 {
@@ -157,6 +173,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
+
+		// TODO: If there can be more than one msg in a msg, than I should not return.
+		//       But, if there can't, I should return here
+	case endMessage:
+		return m, tea.Quit
 	}
 
 	switch m.state {
@@ -167,10 +188,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StateRenameProject:
 		return m.UpdateRenameProjectState(msg)
 	case StateFilterList:
-		return m, tea.Quit
+		return m, cmdEndSession(m)
 	}
 
-	return m, tea.Quit
+	return m, cmdEndSession(m)
 }
 
 func (m model) View() string {
@@ -186,21 +207,20 @@ func (m model) View() string {
 	s := titleStyle.Render(" Test Projects ")
 	s += "\n\n"
 
-	offset := 4
-
+	// render add project if necessary
 	if m.state == StateAddProject {
 		s += selectedStyle.Render("Add Project: ") + renameStyle.Render(m.temp)
 		s += "\n\n"
-		offset += 3
 	}
 
-	for i, _ := range m.projects {
+	loopMax := min(m.minIndex+m.height-m.projectOffset, len(m.projects))
+	for i := m.minIndex; i < loopMax; i++ {
 		p := &m.projects[i]
 		if !p.visible {
 			continue
 		}
 
-		if m.cursor == i {
+		if m.projectIndex == i {
 			switch m.state {
 			case StateList:
 				s += selectedStyle.Render("> "+p.name) + "\n"
@@ -213,9 +233,10 @@ func (m model) View() string {
 		} else {
 			s += defaultStyle.Render("  "+p.name) + "\n"
 		}
+
 	}
 
 	// header
-	s += "\nq quit, a add project, r rename project, / to filter\n"
+	s += "\nq quit, a add project, r rename project, / to filter"
 	return s
 }
