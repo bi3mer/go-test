@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+	"unicode"
 
 	tea "github.com/charmbracelet/bubbletea"
 )
@@ -18,6 +19,7 @@ type model struct {
 	state         AppState
 	directory     string
 	temp          string
+	filterPattern string
 	projects      []project
 }
 
@@ -38,7 +40,7 @@ func (m *model) ChangeState(state AppState) {
 	m.state = state
 
 	switch m.state {
-	case StateAddProject:
+	case StateAddProject, StateFilterList:
 		m.projectOffset = 6
 	default:
 		m.projectOffset = 4
@@ -75,11 +77,11 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ChangeState(StateRenameProject)
 
 		case "a", "A":
-			m.ChangeState(StateAddProject)
 			m.temp = ""
+			m.ChangeState(StateAddProject)
 
 		case "/", "f", "F":
-			panic("Filter not yet implemented!")
+			m.ChangeState(StateFilterList)
 
 		case "enter", " ":
 			makeTemp(m.directory, m.projects[m.projectIndex].name)
@@ -98,8 +100,6 @@ func (m model) UpdateRenameProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC:
-			return m, cmdEndSession(m)
 		case tea.KeyEscape:
 			m.projects[m.projectIndex].name = m.temp
 			m.ChangeState(StateList)
@@ -139,8 +139,6 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.Type {
-		case tea.KeyCtrlC:
-			return m, cmdEndSession(m)
 		case tea.KeyEscape:
 			m.ChangeState(StateList)
 		case tea.KeyEnter:
@@ -169,13 +167,64 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// simple filter version: https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.h
+//
+// This works, but it is not as good as it could be and, more importantly, the project list view is messed up
+func (m *model) filter() {
+	for i := range len(m.projects) {
+		name := m.projects[i].name
+		indexP := 0
+		indexS := 0
+
+		for indexP < len(m.filterPattern) && indexS < len(name) {
+			if unicode.ToLower(rune(m.filterPattern[indexP])) == unicode.ToLower(rune(name[indexS])) {
+				indexP++
+			}
+
+			indexS++
+		}
+
+		m.projects[i].visible = indexP == len(m.filterPattern)
+	}
+}
+
+func (m model) UpdateFilterState(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyEscape:
+			for i := range len(m.projects) {
+				m.projects[i].visible = true
+			}
+
+			m.ChangeState(StateList)
+		case tea.KeyEnter:
+			m.ChangeState(StateList)
+		case tea.KeyBackspace:
+			length := len(m.filterPattern)
+			if length > 0 {
+				m.filterPattern = m.filterPattern[:length-1]
+			}
+
+			m.filter()
+		case tea.KeyRunes:
+			m.filterPattern += string(msg.Runes)
+			m.filter()
+		}
+	}
+
+	return m, nil
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.Type {
+		case tea.KeyCtrlC:
+			return m, cmdEndSession(m)
+		}
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
-
-		// TODO: If there can be more than one msg in a msg, than I should not return.
-		//       But, if there can't, I should return here
 	case endMessage:
 		return m, tea.Quit
 	}
@@ -188,7 +237,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case StateRenameProject:
 		return m.UpdateRenameProjectState(msg)
 	case StateFilterList:
-		return m, cmdEndSession(m)
+		return m.UpdateFilterState(msg)
 	}
 
 	return m, cmdEndSession(m)
@@ -208,8 +257,12 @@ func (m model) View() string {
 	s += "\n\n"
 
 	// render add project if necessary
-	if m.state == StateAddProject {
+	switch m.state {
+	case StateAddProject:
 		s += selectedStyle.Render("Add Project: ") + renameStyle.Render(m.temp)
+		s += "\n\n"
+	case StateFilterList:
+		s += selectedStyle.Render("Filter: ") + renameStyle.Render(m.filterPattern)
 		s += "\n\n"
 	}
 
