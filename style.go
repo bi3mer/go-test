@@ -18,3 +18,7 @@ var renameStyle = lipgloss.NewStyle().
 var defaultStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#666666")).
 	Padding(0)
+
+var errorStyle = lipgloss.NewStyle().
+	Foreground(lipgloss.Color("#FF0000")).
+	Padding(0)

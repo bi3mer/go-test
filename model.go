@@ -10,19 +10,23 @@ import (
 )
 
 type model struct {
+	width     int
+	height    int
+	cursor    int
 	state     AppState
 	directory string
 	temp      string
 	projects  []project
-	cursor    int
 }
 
 func NewModel(directory string) model {
 	return model{
+		width:     0,
+		height:    0,
+		cursor:    0,
 		state:     StateList,
 		directory: directory,
 		projects:  generateProjects(directory),
-		cursor:    0,
 	}
 }
 
@@ -150,6 +154,11 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width, m.height = msg.Width, msg.Height
+	}
+
 	switch m.state {
 	case StateList:
 		return m.UpdateListState(msg)
@@ -165,17 +174,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m model) View() string {
+	if m.height < 8 {
+		return errorStyle.Render("Please make your terminal taller...") + "\n"
+	}
+
+	if m.width < 20 {
+		return errorStyle.Render("Please make your terminal wider...") + "\n"
+	}
+
 	// Title
 	s := titleStyle.Render(" Test Projects ")
 	s += "\n\n"
 
+	offset := 4
+
 	if m.state == StateAddProject {
 		s += selectedStyle.Render("Add Project: ") + renameStyle.Render(m.temp)
 		s += "\n\n"
+		offset += 3
 	}
 
-	// TODO: add paging so only so list of projects does not extend past the terminal view
-	for i, p := range m.projects {
+	for i, _ := range m.projects {
+		p := &m.projects[i]
 		if !p.visible {
 			continue
 		}

@@ -40,4 +40,4 @@ First, go to `~/bash_profile`, `~/.zshrc`, or wherever you modified to remove `g
 
 tl;dr, MIT
 
-All the code I've written is under the MIT license. However, this is written in Go, which is under BSD-3. I also have a dependency on [Bubble Tea](https://github.com/charmbracelet/bubbletea) for the TUI, which is under the MIT license, and [Lip Gloss](MIT), which is under the MIT license.
+All the code I've written is under the MIT license. However, this is written in Go, which is under BSD-3. I also have a dependency on [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](MIT), both of which are under the MIT license.
