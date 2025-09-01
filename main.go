@@ -38,6 +38,16 @@ variable 'gotestdir' and/or make the directory yourself.`)
 	}
 
 	// ===========================================================================
+	// Set up logging
+	// ===========================================================================
+	f, err := tea.LogToFile(filepath.Join(directory, "debug.log"), "debug")
+	if err != nil {
+		fmt.Println("Fatal logging set up:", err)
+		os.Exit(1)
+	}
+	defer f.Close()
+
+	// ===========================================================================
 	// Start the app
 	// ===========================================================================
 	makeTemp(directory, ".")

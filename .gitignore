@@ -37,3 +37,9 @@ temp
 
 # Executable running recommended command
 gotest
+
+# ignore logs
+debug.log
+
+# ignroe executble
+go-test

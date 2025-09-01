@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"slices"
@@ -11,13 +12,13 @@ import (
 )
 
 type project struct {
-	name    string
-	time    time.Time
-	visible bool
+	name string
+	time time.Time
 }
 
 func generateProjects(directory string) []project {
 	projects := []project{}
+	keepProject := []bool{}
 
 	// read .gotestdb to find projects already made
 	dbPath := filepath.Join(directory, ".gotestdb")
@@ -32,10 +33,11 @@ func generateProjects(directory string) []project {
 				projectTime, timeErr := time.Parse(time.StampNano, lineData[1])
 				if timeErr == nil {
 					projects = append(projects, project{
-						name:    lineData[0],
-						time:    projectTime,
-						visible: false,
+						name: lineData[0],
+						time: projectTime,
 					})
+
+					keepProject = append(keepProject, false)
 				}
 			}
 		}
@@ -54,9 +56,8 @@ func generateProjects(directory string) []project {
 		if e.IsDir() {
 			found := false
 			for i := 0; i < len(projects); i++ {
-				p := &projects[i]
-				if p.name == projectName {
-					p.visible = true
+				if projects[i].name == projectName {
+					keepProject[i] = true
 					found = true
 					break
 				}
@@ -64,10 +65,11 @@ func generateProjects(directory string) []project {
 
 			if !found {
 				projects = append(projects, project{
-					name:    projectName,
-					time:    time.Now(),
-					visible: true,
+					name: projectName,
+					time: time.Now(),
 				})
+
+				keepProject = append(keepProject, true)
 			}
 		}
 	}
@@ -75,9 +77,11 @@ func generateProjects(directory string) []project {
 	// remove any project where visible is false, because this means that there is no
 	// corresponding directory in the users test directory
 	filtered := projects[:0]
-	for _, p := range projects {
-		if p.visible {
+	for i, p := range projects {
+		if keepProject[i] {
 			filtered = append(filtered, p)
+		} else {
+			log.Printf("Filtered %s\n", p.name)
 		}
 	}
 

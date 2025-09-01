@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,29 +12,69 @@ import (
 )
 
 type model struct {
-	width         int
-	height        int
-	minIndex      int
-	projectIndex  int
-	projectOffset int
-	state         AppState
-	directory     string
-	temp          string
-	filterPattern string
-	projects      []project
+	width            int
+	height           int
+	minIndex         int
+	projectIndex     int
+	projectOffset    int
+	state            AppState
+	directory        string
+	temp             string
+	filterPattern    string
+	projects         []project
+	filteredProjects []int
 }
 
 func NewModel(directory string) model {
-	return model{
+	m := model{
 		projectOffset: 4,
 		state:         StateList,
 		directory:     directory,
 		projects:      generateProjects(directory),
 	}
+
+	m.reset()
+	return m
 }
 
 func (m model) Init() tea.Cmd {
 	return nil
+}
+
+func (m *model) reset() {
+	m.projectIndex = 0
+	m.minIndex = 0
+
+	var i int
+	for i = range len(m.filteredProjects) {
+		m.filteredProjects[i] = i
+	}
+
+	for i < len(m.projects) {
+		m.filteredProjects = append(m.filteredProjects, i)
+		i++
+	}
+}
+
+func (m *model) getProject(index int) *project {
+	if index >= len(m.filteredProjects) {
+		log.Fatalf(
+			"Index %d out of bounds for filtered projects (len=%d)\n",
+			index, len(m.filteredProjects))
+	}
+
+	filteredIndex := m.filteredProjects[index]
+	if filteredIndex >= len(m.projects) {
+		log.Fatalf(
+			"Filtered index %d out of bounds for projects (len=%d)\n",
+			filteredIndex, len(m.projects))
+	}
+
+	return &m.projects[m.filteredProjects[index]]
+}
+
+func (m *model) getSelectedProject() *project {
+	return m.getProject(m.projectIndex)
 }
 
 func (m *model) ChangeState(state AppState) {
@@ -58,30 +99,14 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.projectIndex > 0 {
 				m.projectIndex--
 
-				for m.projects[m.projectIndex].visible == false && m.projectIndex > 0 {
-					m.projectIndex--
-				}
-
-				for m.projects[m.projectIndex].visible == false && m.projectIndex < len(m.projects)-1 {
-					m.projectIndex++
-				}
-
 				if m.minIndex > m.projectIndex {
 					m.minIndex--
 				}
 			}
 
 		case "down", "j":
-			if m.projectIndex < len(m.projects)-1 {
+			if m.projectIndex < len(m.filteredProjects)-1 {
 				m.projectIndex++
-
-				for m.projects[m.projectIndex].visible == false && m.projectIndex < len(m.projects)-1 {
-					m.projectIndex++
-				}
-
-				for m.projects[m.projectIndex].visible == false && m.projectIndex > 0 {
-					m.projectIndex--
-				}
 
 				if m.minIndex+m.height-m.projectOffset-1 < m.projectIndex {
 					m.minIndex++
@@ -89,7 +114,7 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 
 		case "r", "R":
-			m.temp = strings.Clone(m.projects[m.projectIndex].name)
+			m.temp = strings.Clone(m.getSelectedProject().name)
 			m.ChangeState(StateRenameProject)
 
 		case "a", "A":
@@ -97,13 +122,15 @@ func (m model) UpdateListState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.ChangeState(StateAddProject)
 
 		case "/", "f", "F":
+			m.reset()
 			m.ChangeState(StateFilterList)
 
 		case "enter", " ":
-			makeTemp(m.directory, m.projects[m.projectIndex].name)
-			m.projects[m.projectIndex].time = time.Now()
+			project := m.getSelectedProject()
+			makeTemp(m.directory, project.name)
+			project.time = time.Now()
 			sortProjects(m.projects)
-			m.projectIndex = 0
+			m.reset()
 
 			return m, cmdEndSession(m)
 		}
@@ -161,9 +188,8 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 			err := os.Mkdir(filepath.Join(m.directory, m.temp), 0755)
 			if err == nil {
 				m.projects = append(m.projects, project{
-					name:    m.temp,
-					time:    time.Now(),
-					visible: true,
+					name: m.temp,
+					time: time.Now(),
 				})
 
 				sortProjects(m.projects)
@@ -185,8 +211,9 @@ func (m model) UpdateAddProjectState(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 // simple filter version: https://github.com/forrestthewoods/lib_fts/blob/master/code/fts_fuzzy_match.h
 //
-// This works, but it is not as good as it could be and, more importantly, the project list view is messed up
+// I will make the better version, but first we need a simple version to work
 func (m *model) filter() {
+	m.filteredProjects = m.filteredProjects[:0] // clear
 	for i := range len(m.projects) {
 		name := m.projects[i].name
 		indexP := 0
@@ -200,8 +227,13 @@ func (m *model) filter() {
 			indexS++
 		}
 
-		m.projects[i].visible = indexP == len(m.filterPattern)
+		if indexP == len(m.filterPattern) {
+			m.filteredProjects = append(m.filteredProjects, i)
+		}
 	}
+
+	m.projectIndex = 0
+	m.minIndex = 0
 }
 
 func (m model) UpdateFilterState(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -209,10 +241,8 @@ func (m model) UpdateFilterState(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.Type {
 		case tea.KeyEscape:
-			for i := range len(m.projects) {
-				m.projects[i].visible = true
-			}
-
+			m.reset()
+			m.filterPattern = ""
 			m.ChangeState(StateList)
 		case tea.KeyEnter:
 			m.ChangeState(StateList)
@@ -282,13 +312,9 @@ func (m model) View() string {
 		s += "\n\n"
 	}
 
-	loopMax := min(m.minIndex+m.height-m.projectOffset, len(m.projects))
-	for i := m.minIndex; i < loopMax && i < len(m.projects); i++ {
-		p := &m.projects[i]
-		if !p.visible {
-			loopMax++
-			continue
-		}
+	loopMax := min(m.minIndex+m.height-m.projectOffset, len(m.filteredProjects))
+	for i := m.minIndex; i < loopMax && i < len(m.filteredProjects); i++ {
+		p := m.getProject(i)
 
 		if m.projectIndex == i {
 			switch m.state {
@@ -303,7 +329,6 @@ func (m model) View() string {
 		} else {
 			s += defaultStyle.Render("  "+p.name) + "\n"
 		}
-
 	}
 
 	// header
