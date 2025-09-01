@@ -231,9 +231,6 @@ func (m *model) filter() {
 			m.filteredProjects = append(m.filteredProjects, i)
 		}
 	}
-
-	m.projectIndex = 0
-	m.minIndex = 0
 }
 
 func (m model) UpdateFilterState(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -324,7 +321,8 @@ func (m model) View() string {
 				s += selectedStyle.Render("> ") + renameStyle.Render(p.name) + "\n"
 			case StateAddProject:
 				s += defaultStyle.Render("> "+p.name) + "\n"
-
+			default:
+				s += defaultStyle.Render("  "+p.name) + "\n"
 			}
 		} else {
 			s += defaultStyle.Render("  "+p.name) + "\n"
